@@ -95,7 +95,7 @@ class TimekprConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Collect SSH and timekpr connection details."""
         errors: dict[str, str] = {}
-        placeholders: dict[str, str] = {"details": ""}
+        placeholders: dict[str, str] = {"details": "No details provided"}
 
         if user_input is not None:
             self._data = dict(user_input)
@@ -133,12 +133,13 @@ class TimekprConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "missing_ssh_integration"
             except TimekprError as exc:
                 errors["base"] = "cannot_connect"
-                placeholders["details"] = str(exc)
-                _LOGGER.warning(
+                placeholders["details"] = str(exc) or repr(exc)
+                _LOGGER.error(
                     "timekpr config flow failed to connect/validate host=%s user=%s: %s",
                     host,
                     username,
                     exc,
+                    exc_info=True,
                 )
             except Exception:
                 errors["base"] = "unknown"
@@ -433,10 +434,11 @@ class TimekprOptionsFlow(config_entries.OptionsFlow):
             except Exception as exc:
                 available_users = list(merged.get(CONF_USERS, []))
                 errors["base"] = "cannot_connect"
-                _LOGGER.warning(
+                _LOGGER.error(
                     "timekpr options flow unable to refresh users for entry=%s: %s",
                     self.config_entry.entry_id,
                     exc,
+                    exc_info=True,
                 )
         else:
             available_users = list(merged.get(CONF_USERS, []))
