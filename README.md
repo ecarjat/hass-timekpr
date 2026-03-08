@@ -19,7 +19,7 @@ The remote computer must have `timekpra` available (default path is `/usr/bin/ti
 
 ### 2) SSH access from Home Assistant
 
-This integration relies on the `ssh` integration and creates/links an SSH entry during config flow.
+This integration relies on the [`ssh` integration](https://github.com/zhbjsh/homeassistant-ssh). Install that integration first (typically via HACS), then configure Timekpr. Timekpr creates/links an SSH entry during its config flow.
 
 ### 3) Passwordless sudo for `timekpra` (required)
 

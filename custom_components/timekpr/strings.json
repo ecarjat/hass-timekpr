@@ -24,6 +24,7 @@
     },
     "error": {
       "cannot_connect": "Cannot connect or execute timekpra via SSH.",
+      "missing_ssh_integration": "Required integration \"SSH\" is not installed. Install `homeassistant-ssh` first.",
       "sudo_password_required": "Passwordless sudo is not configured for timekpra.",
       "no_users_found": "No controllable users were returned by timekpra.",
       "no_users_selected": "Select at least one user.",

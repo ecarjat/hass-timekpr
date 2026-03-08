@@ -19,7 +19,7 @@ from homeassistant.const import (
     CONF_USERNAME,
 )
 from homeassistant.core import callback
-from homeassistant.data_entry_flow import FlowResult
+from homeassistant.data_entry_flow import FlowResult, UnknownHandler
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.selector import (
     NumberSelector,
@@ -126,6 +126,8 @@ class TimekprConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             except TimekprSudoRequiredError:
                 errors["base"] = "sudo_password_required"
+            except MissingSSHIntegrationError:
+                errors["base"] = "missing_ssh_integration"
             except TimekprError:
                 errors["base"] = "cannot_connect"
             except Exception:
@@ -250,11 +252,16 @@ class TimekprConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if passphrase:
             ssh_input[CONF_PASSWORD] = passphrase
 
-        result = await self.hass.config_entries.flow.async_init(
-            SSH_DOMAIN,
-            context={"source": config_entries.SOURCE_USER},
-            data=ssh_input,
-        )
+        try:
+            result = await self.hass.config_entries.flow.async_init(
+                SSH_DOMAIN,
+                context={"source": config_entries.SOURCE_USER},
+                data=ssh_input,
+            )
+        except UnknownHandler as exc:
+            raise MissingSSHIntegrationError(
+                "Required integration 'ssh' is not installed"
+            ) from exc
 
         return await self._finish_ssh_flow(result, data)
 
@@ -274,6 +281,11 @@ class TimekprConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return created_entry.entry_id
 
             if result["type"] == "abort":
+                reason = result.get("reason")
+                if reason in {"unknown_handler", "invalid_handler", "unknown"}:
+                    raise MissingSSHIntegrationError(
+                        "Required integration 'ssh' is not installed"
+                    )
                 existing = self._find_matching_ssh_entry(
                     host=host,
                     port=port,
@@ -366,6 +378,10 @@ class TimekprConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         digest = sha256(f"{host}:{port}:{username}".encode()).digest()
         octets = [0x02, digest[0], digest[1], digest[2], digest[3], digest[4]]
         return ":".join(f"{value:02x}" for value in octets)
+
+
+class MissingSSHIntegrationError(TimekprError):
+    """Raised when the ssh integration is not installed or not loadable."""
 
 
 class TimekprOptionsFlow(config_entries.OptionsFlow):

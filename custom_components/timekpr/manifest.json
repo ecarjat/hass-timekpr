@@ -1,9 +1,9 @@
 {
   "domain": "timekpr",
   "name": "Timekpr",
+  "after_dependencies": ["ssh"],
   "codeowners": ["@emmanuelcarjat"],
   "config_flow": true,
-  "dependencies": ["ssh"],
   "documentation": "https://github.com/emmanuelcarjat/hass-timekpr",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/emmanuelcarjat/hass-timekpr/issues",

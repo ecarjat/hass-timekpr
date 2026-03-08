@@ -20,6 +20,8 @@ from .const import (
     DEFAULT_UNLOCK_GRACE_MINUTES,
     DOMAIN,
     PLATFORMS,
+    SSH_DOMAIN,
+    SSH_SERVICE_EXECUTE_COMMAND,
 )
 from .coordinator import TimekprCoordinator
 from .models import TimekprRuntimeData
@@ -37,6 +39,11 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up timekpr from a config entry."""
     hass.data.setdefault(DOMAIN, {})
+
+    if not hass.services.has_service(SSH_DOMAIN, SSH_SERVICE_EXECUTE_COMMAND):
+        raise ConfigEntryNotReady(
+            "Required integration 'ssh' is not loaded. Install and configure homeassistant-ssh first."
+        )
 
     users = list(entry.options.get(CONF_USERS, entry.data.get(CONF_USERS, [])))
     if not users:
