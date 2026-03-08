@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from hashlib import sha256
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -57,6 +58,7 @@ from .const import (
 
 SSH_DOMAIN = "ssh"
 CONF_MAC = "mac"
+_LOGGER = logging.getLogger(__name__)
 
 
 def _managed_users_selector(users: list[str]) -> SelectSelector:
@@ -93,6 +95,7 @@ class TimekprConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Collect SSH and timekpr connection details."""
         errors: dict[str, str] = {}
+        placeholders: dict[str, str] = {"details": ""}
 
         if user_input is not None:
             self._data = dict(user_input)
@@ -128,10 +131,22 @@ class TimekprConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "sudo_password_required"
             except MissingSSHIntegrationError:
                 errors["base"] = "missing_ssh_integration"
-            except TimekprError:
+            except TimekprError as exc:
                 errors["base"] = "cannot_connect"
+                placeholders["details"] = str(exc)
+                _LOGGER.warning(
+                    "timekpr config flow failed to connect/validate host=%s user=%s: %s",
+                    host,
+                    username,
+                    exc,
+                )
             except Exception:
                 errors["base"] = "unknown"
+                _LOGGER.exception(
+                    "timekpr config flow unexpected error for host=%s user=%s",
+                    host,
+                    username,
+                )
 
         schema = vol.Schema(
             {
@@ -169,7 +184,12 @@ class TimekprConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             }
         )
 
-        return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
+        return self.async_show_form(
+            step_id="user",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders=placeholders,
+        )
 
     async def async_step_select_users(
         self, user_input: dict[str, Any] | None = None
@@ -410,9 +430,14 @@ class TimekprOptionsFlow(config_entries.OptionsFlow):
                 )
                 await adapter.async_validate_sudo()
                 available_users = await adapter.async_list_users()
-            except Exception:
+            except Exception as exc:
                 available_users = list(merged.get(CONF_USERS, []))
                 errors["base"] = "cannot_connect"
+                _LOGGER.warning(
+                    "timekpr options flow unable to refresh users for entry=%s: %s",
+                    self.config_entry.entry_id,
+                    exc,
+                )
         else:
             available_users = list(merged.get(CONF_USERS, []))
             errors["base"] = "cannot_connect"

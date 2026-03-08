@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Connect to host",
-        "description": "Enter SSH credentials and timekpra settings.",
+        "description": "Enter SSH credentials and timekpra settings. Last connection error: {details}",
         "data": {
           "host": "Host",
           "port": "Port",

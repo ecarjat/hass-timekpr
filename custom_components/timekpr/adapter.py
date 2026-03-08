@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 import re
 import shlex
 from typing import Any
@@ -27,6 +28,7 @@ _USER_RE = re.compile(r"^[a-z_][a-z0-9_.-]*\$?$", re.IGNORECASE)
 _WINDOWS_RE = re.compile(
     r"^((?:[01]\d|2[0-3]):[0-5]\d)-(?:([01]\d|2[0-3]|24):([0-5]\d))$"
 )
+_LOGGER = logging.getLogger(__name__)
 
 
 class TimekprError(HomeAssistantError):
@@ -212,15 +214,34 @@ class TimekprCommandAdapter:
             "command": command,
         }
 
-        response = await self._hass.services.async_call(
-            SSH_DOMAIN,
-            SSH_SERVICE_EXECUTE_COMMAND,
-            service_data,
-            blocking=True,
-            return_response=True,
+        _LOGGER.debug(
+            "Executing ssh command for timekpr (device=%s): %s",
+            self._ssh_device_id,
+            command,
         )
+        try:
+            response = await self._hass.services.async_call(
+                SSH_DOMAIN,
+                SSH_SERVICE_EXECUTE_COMMAND,
+                service_data,
+                blocking=True,
+                return_response=True,
+            )
+        except Exception as exc:
+            _LOGGER.exception(
+                "ssh.execute_command call failed for device=%s command=%s",
+                self._ssh_device_id,
+                command,
+            )
+            raise TimekprSSHError(str(exc)) from exc
 
         if not isinstance(response, dict) or "results" not in response:
+            _LOGGER.error(
+                "Unexpected ssh.execute_command response for device=%s command=%s: %r",
+                self._ssh_device_id,
+                command,
+                response,
+            )
             raise TimekprSSHError("Unexpected response from ssh.execute_command")
 
         results = response.get("results")
@@ -233,6 +254,12 @@ class TimekprCommandAdapter:
 
         if not result.get("success", False):
             error = str(result.get("error", "SSH command failed"))
+            _LOGGER.warning(
+                "ssh.execute_command reported failure for device=%s command=%s error=%s",
+                self._ssh_device_id,
+                command,
+                error,
+            )
             lowered = error.lower()
             if "sudo" in lowered or "password" in lowered or "tty" in lowered:
                 raise TimekprSudoRequiredError(error)
@@ -247,6 +274,13 @@ class TimekprCommandAdapter:
 
         if output.code != 0:
             lowered = f"{output.stderr}\n{output.stdout}".lower()
+            _LOGGER.warning(
+                "timekpra command failed for device=%s code=%s stderr=%s stdout=%s",
+                self._ssh_device_id,
+                output.code,
+                output.stderr,
+                output.stdout,
+            )
             if "sudo" in lowered or "password" in lowered or "tty" in lowered:
                 raise TimekprSudoRequiredError(
                     output.stderr or output.stdout or "sudo requires password"
