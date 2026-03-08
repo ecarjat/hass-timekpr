@@ -13,15 +13,15 @@ Per configured host, it can manage one or more `timekpr` users:
 
 ## Prerequisites
 
-## 1) `timekpr-next` installed on the controlled computer
+### 1) `timekpr-next` installed on the controlled computer
 
 The remote computer must have `timekpra` available (default path is `/usr/bin/timekpra`).
 
-## 2) SSH access from Home Assistant
+### 2) SSH access from Home Assistant
 
 This integration relies on the `ssh` integration and creates/links an SSH entry during config flow.
 
-## 3) Passwordless sudo for `timekpra` (required)
+### 3) Passwordless sudo for `timekpra` (required)
 
 The SSH user must be allowed to run `timekpra` without a password.
 
@@ -43,13 +43,22 @@ sudo -n timekpra --help
 
 The command must succeed without prompting for a password.
 
-## Installation
+## Installation (HACS)
+
+1. Open HACS in Home Assistant.
+2. Go to **Integrations** and open the menu (three dots) -> **Custom repositories**.
+3. Add repository URL: `https://github.com/ecarjat/hass-timekpr`
+4. Category: **Integration**.
+5. Install **Timekpr** from HACS and restart Home Assistant.
+6. Add integration: **Settings -> Devices & Services -> Add Integration -> Timekpr**.
+7. Enter host, port, SSH username, private key, optional key passphrase.
+8. Select managed users discovered from `timekpra --userlist`.
+
+## Manual installation
 
 1. Copy `custom_components/timekpr` into your Home Assistant config directory.
 2. Restart Home Assistant.
 3. Add integration: **Settings -> Devices & Services -> Add Integration -> Timekpr**.
-4. Enter host, port, SSH username, private key, optional key passphrase.
-5. Select managed users discovered from `timekpra --userlist`.
 
 ## Entities
 
