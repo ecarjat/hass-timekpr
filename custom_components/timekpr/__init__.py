@@ -8,6 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
+import homeassistant.helpers.config_validation as cv
 
 from .adapter import TimekprCommandAdapter, TimekprError
 from .const import (
@@ -23,6 +24,8 @@ from .const import (
 from .coordinator import TimekprCoordinator
 from .models import TimekprRuntimeData
 from .services import async_register_services, async_unregister_services
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
