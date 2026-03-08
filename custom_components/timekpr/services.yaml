@@ -1,0 +1,131 @@
+set_daily_limit:
+  name: Set daily limit
+  description: Set the time allowance in minutes for a specific user and weekday.
+  fields:
+    user:
+      name: User
+      description: Target OS username managed by timekpr.
+      required: true
+      selector:
+        text:
+    weekday:
+      name: Weekday
+      description: One of mon, tue, wed, thu, fri, sat, sun.
+      required: true
+      selector:
+        select:
+          options:
+            - mon
+            - tue
+            - wed
+            - thu
+            - fri
+            - sat
+            - sun
+    minutes:
+      name: Minutes
+      description: Allowed minutes for the selected weekday.
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 1440
+          mode: box
+    entry_id:
+      name: Config entry ID
+      description: Optional. Required when the same username exists in multiple hosts.
+      selector:
+        text:
+
+set_allowed_windows:
+  name: Set allowed windows
+  description: Set allowed computer usage windows for one weekday.
+  fields:
+    user:
+      name: User
+      required: true
+      selector:
+        text:
+    weekday:
+      name: Weekday
+      required: true
+      selector:
+        select:
+          options:
+            - mon
+            - tue
+            - wed
+            - thu
+            - fri
+            - sat
+            - sun
+    windows:
+      name: Windows
+      description: Comma-separated windows in HH:MM-HH:MM format.
+      required: true
+      selector:
+        text:
+    entry_id:
+      name: Config entry ID
+      selector:
+        text:
+
+add_time:
+  name: Add time
+  description: Add extra minutes for the current day.
+  fields:
+    user:
+      name: User
+      required: true
+      selector:
+        text:
+    minutes:
+      name: Minutes
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 1440
+          mode: box
+    entry_id:
+      name: Config entry ID
+      selector:
+        text:
+
+lock_user:
+  name: Lock user
+  description: Force lockout by exhausting available time for today.
+  fields:
+    user:
+      name: User
+      required: true
+      selector:
+        text:
+    entry_id:
+      name: Config entry ID
+      selector:
+        text:
+
+unlock_user:
+  name: Unlock user
+  description: Unlock user by restoring configured grace/previous time.
+  fields:
+    user:
+      name: User
+      required: true
+      selector:
+        text:
+    entry_id:
+      name: Config entry ID
+      selector:
+        text:
+
+refresh_users:
+  name: Refresh users
+  description: Refresh the controllable users list from timekpr.
+  fields:
+    entry_id:
+      name: Config entry ID
+      description: Optional. If omitted, refreshes all timekpr entries.
+      selector:
+        text:

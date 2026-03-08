@@ -1,0 +1,64 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to host",
+        "description": "Enter SSH credentials and timekpra settings.",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "username": "Username",
+          "ssh_key": "SSH private key",
+          "ssh_key_passphrase": "SSH key passphrase",
+          "timekpra_path": "timekpra path",
+          "unlock_grace_minutes": "Unlock grace minutes"
+        }
+      },
+      "select_users": {
+        "title": "Select managed users",
+        "description": "Choose the operating system users to manage with timekpr.",
+        "data": {
+          "users": "Managed users"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect or execute timekpra via SSH.",
+      "sudo_password_required": "Passwordless sudo is not configured for timekpra.",
+      "no_users_found": "No controllable users were returned by timekpra.",
+      "no_users_selected": "Select at least one user.",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "This host/user is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Timekpr options",
+        "description": "Refresh managed users and update runtime settings.",
+        "data": {
+          "users": "Managed users",
+          "timekpra_path": "timekpra path",
+          "unlock_grace_minutes": "Unlock grace minutes"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to validate SSH/timekpra right now."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "remaining_minutes": {
+        "name": "Remaining Time"
+      }
+    },
+    "switch": {
+      "lockout": {
+        "name": "Lockout"
+      }
+    }
+  }
+}
