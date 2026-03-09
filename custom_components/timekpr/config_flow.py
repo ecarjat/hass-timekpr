@@ -354,6 +354,14 @@ class TimekprConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         f"{str(key)}={str(value)}"
                         for key, value in sorted(flow_errors.items(), key=lambda item: str(item[0]))
                     )
+                if isinstance(flow_placeholders, dict) and flow_placeholders:
+                    placeholders_text = ", ".join(
+                        f"{str(key)}={str(value)}"
+                        for key, value in sorted(
+                            flow_placeholders.items(), key=lambda item: str(item[0])
+                        )
+                    )
+                    details = f"{details}; {placeholders_text}"
                 raise TimekprError(f"SSH flow validation failed ({details})")
 
             raise TimekprError(f"Unhandled SSH flow step '{step_id}'")
