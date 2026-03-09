@@ -339,7 +339,22 @@ class TimekprConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             if step_id == "user":
                 # Validation failed inside ssh flow despite previous checks.
-                raise TimekprError("SSH flow validation failed")
+                flow_errors = result.get("errors")
+                flow_placeholders = result.get("description_placeholders")
+                _LOGGER.error(
+                    "SSH flow validation failed for host=%s user=%s errors=%s placeholders=%s",
+                    host,
+                    username,
+                    flow_errors,
+                    flow_placeholders,
+                )
+                details = "unknown validation error"
+                if isinstance(flow_errors, dict) and flow_errors:
+                    details = ", ".join(
+                        f"{str(key)}={str(value)}"
+                        for key, value in sorted(flow_errors.items(), key=lambda item: str(item[0]))
+                    )
+                raise TimekprError(f"SSH flow validation failed ({details})")
 
             raise TimekprError(f"Unhandled SSH flow step '{step_id}'")
 
