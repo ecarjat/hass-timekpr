@@ -81,21 +81,29 @@ class TimekprCommandAdapter:
     async def async_list_users(self) -> list[str]:
         """Return list of controllable users from timekpra."""
         output = await self._async_run_timekpra(TIMEKPR_CMD_USERLIST)
+        raw_text = self._pick_structured_output(output)
 
         users: list[str] = []
-        for line in output.stdout.splitlines():
+        for line in raw_text.splitlines():
             candidate = line.strip()
             if not candidate:
                 continue
             if _USER_RE.fullmatch(candidate):
                 users.append(candidate)
 
+        if not users:
+            _LOGGER.warning(
+                "timekpra --userlist returned no parsable users for device=%s (stdout=%r, stderr=%r)",
+                self._ssh_device_id,
+                output.stdout[:400],
+                output.stderr[:400],
+            )
         return sorted(set(users))
 
     async def async_fetch_user_state(self, user: str) -> TimekprUserState:
         """Fetch user info and normalize it for entities."""
         output = await self._async_run_timekpra(TIMEKPR_CMD_USERINFO, user)
-        info = self._parse_userinfo(output.stdout)
+        info = self._parse_userinfo(self._pick_structured_output(output))
 
         state = TimekprUserState(username=user, raw=info)
 
@@ -305,6 +313,17 @@ class TimekprCommandAdapter:
         if not info:
             raise TimekprParseError("Unable to parse user info output")
         return info
+
+    @staticmethod
+    def _pick_structured_output(output: CommandOutput) -> str:
+        """Pick output channel that contains command result text.
+
+        Some SSH/server combinations emit command output to stderr even when exit
+        code is 0; prefer stdout when present, otherwise use stderr.
+        """
+        if output.stdout.strip():
+            return output.stdout
+        return output.stderr
 
     @staticmethod
     def _parse_int_list(raw: str, expected: int | None = None) -> list[int]:
