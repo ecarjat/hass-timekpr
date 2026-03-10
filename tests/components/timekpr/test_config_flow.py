@@ -11,7 +11,7 @@ import pytest
 pytest.importorskip("pytest_homeassistant_custom_component")
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.timekpr.adapter import TimekprSudoRequiredError
+from custom_components.timekpr.adapter import TimekprNoUsersError, TimekprSudoRequiredError
 from custom_components.timekpr.const import (
     CONF_SSH_DEVICE_ID,
     CONF_SSH_ENTRY_ID,
@@ -169,6 +169,53 @@ async def test_config_flow_no_users(hass) -> None:
     assert result2["type"] == "form"
     assert result2["step_id"] == "user"
     assert result2["errors"] == {"base": "no_users_found"}
+
+
+@pytest.mark.asyncio
+async def test_config_flow_no_users_surfaces_details(hass) -> None:
+    """Config flow should include no-users details in placeholders."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": config_entries.SOURCE_USER},
+    )
+
+    user_input = {
+        CONF_HOST: "192.168.1.20",
+        CONF_PORT: 22,
+        CONF_USERNAME: "ha_ssh",
+        CONF_SSH_KEY: "KEY",
+        "ssh_key_passphrase": "",
+        CONF_TIMEKPRA_PATH: DEFAULT_TIMEKPRA_PATH,
+        CONF_UNLOCK_GRACE_MINUTES: DEFAULT_UNLOCK_GRACE_MINUTES,
+    }
+
+    with (
+        patch(
+            "custom_components.timekpr.config_flow.TimekprConfigFlow._async_ensure_ssh_entry",
+            AsyncMock(return_value="ssh-entry-1"),
+        ),
+        patch(
+            "custom_components.timekpr.config_flow.TimekprConfigFlow._get_ssh_device_id",
+            return_value="device-1",
+        ),
+        patch(
+            "custom_components.timekpr.adapter.TimekprCommandAdapter.async_validate_sudo",
+            AsyncMock(return_value=None),
+        ),
+        patch(
+            "custom_components.timekpr.adapter.TimekprCommandAdapter.async_list_users",
+            AsyncMock(side_effect=TimekprNoUsersError("0 users in total:\\n")),
+        ),
+    ):
+        result2 = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input,
+        )
+
+    assert result2["type"] == "form"
+    assert result2["step_id"] == "user"
+    assert result2["errors"] == {"base": "no_users_found"}
+    assert result2["description_placeholders"]["details"] == "0 users in total:\n"
 
 
 @pytest.mark.asyncio

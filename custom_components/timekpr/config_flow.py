@@ -35,7 +35,12 @@ from homeassistant.helpers.selector import (
     TextSelectorType,
 )
 
-from .adapter import TimekprCommandAdapter, TimekprError, TimekprSudoRequiredError
+from .adapter import (
+    TimekprCommandAdapter,
+    TimekprError,
+    TimekprNoUsersError,
+    TimekprSudoRequiredError,
+)
 from .const import (
     CONF_SSH_DEVICE_ID,
     CONF_SSH_ENTRY_ID,
@@ -121,12 +126,16 @@ class TimekprConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 users = await adapter.async_list_users()
                 if not users:
                     errors["base"] = "no_users_found"
+                    placeholders["details"] = "empty parsed list"
                 else:
                     self._available_users = users
                     self._data[CONF_SSH_ENTRY_ID] = ssh_entry_id
                     self._data[CONF_SSH_DEVICE_ID] = ssh_device_id
                     return await self.async_step_select_users()
 
+            except TimekprNoUsersError as exc:
+                errors["base"] = "no_users_found"
+                placeholders["details"] = str(exc) or "No details provided"
             except TimekprSudoRequiredError:
                 errors["base"] = "sudo_password_required"
             except MissingSSHIntegrationError:

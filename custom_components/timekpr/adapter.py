@@ -53,6 +53,10 @@ class TimekprCommandExecutionError(TimekprError):
     """Raised when timekpra command fails."""
 
 
+class TimekprNoUsersError(TimekprError):
+    """Raised when timekpra returns no controllable users."""
+
+
 @dataclass(slots=True)
 class CommandOutput:
     """Normalized command output from ssh.execute_command."""
@@ -90,7 +94,13 @@ class TimekprCommandAdapter:
         if not users:
             lower = raw_text.lower()
             if re.search(r"\b0\s+users?\b", lower) or "no users" in lower:
-                return []
+                preview = raw_text.strip().replace("\n", "\\n")
+                _LOGGER.error(
+                    "timekpra --userlist returned zero users for device=%s (output=%r)",
+                    self._ssh_device_id,
+                    preview[:400],
+                )
+                raise TimekprNoUsersError(preview[:300] or "empty output")
             _LOGGER.warning(
                 "timekpra --userlist returned no parsable users for device=%s (stdout=%r, stderr=%r)",
                 self._ssh_device_id,
