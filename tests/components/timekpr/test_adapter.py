@@ -128,6 +128,34 @@ async def test_async_list_users_parses_bullets_and_bytes_repr() -> None:
 
 
 @pytest.mark.asyncio
+async def test_async_list_users_parses_literal_list_output() -> None:
+    """User listing should parse when output is a serialized list."""
+    hass = DummyHass(
+        services=DummyServices(
+            response={
+                "results": [
+                    {
+                        "success": True,
+                        "command": "cmd",
+                        "stdout": "['3 users in total:', 'emmanuel', 'hadrien', 'josephine']",
+                        "stderr": "",
+                        "code": 0,
+                    }
+                ]
+            }
+        )
+    )
+    adapter = TimekprCommandAdapter(
+        hass,
+        ssh_device_id="device-1",
+        timekpra_path="/usr/bin/timekpra",
+    )
+
+    users = await adapter.async_list_users()
+    assert users == ["emmanuel", "hadrien", "josephine"]
+
+
+@pytest.mark.asyncio
 async def test_async_list_users_unparsable_output_raises_parse_error() -> None:
     """Non-empty non-user output should produce detailed parse error."""
     hass = DummyHass(
@@ -248,6 +276,42 @@ async def test_fetch_user_state_uses_stderr_when_stdout_empty(
 
     async def _fake_run(*args: str) -> CommandOutput:
         return CommandOutput(command="x", stdout="", stderr=stderr, code=0)
+
+    monkeypatch.setattr(adapter, "_async_run_timekpra", _fake_run)
+
+    state = await adapter.async_fetch_user_state("alice")
+
+    assert state.username == "alice"
+    assert state.actual_time_left_day_seconds == 1200
+
+
+@pytest.mark.asyncio
+async def test_fetch_user_state_parses_literal_list_output(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """User state parsing should support serialized list output."""
+    adapter = TimekprCommandAdapter(
+        hass=DummyHass(services=DummyServices(response={})),
+        ssh_device_id="device-1",
+        timekpra_path="/usr/bin/timekpra",
+    )
+
+    stdout = (
+        "['ALLOWED_WEEKDAYS: 1;2;3;4;5;6;7',"
+        " 'LIMITS_PER_WEEKDAYS: 3600;3600;3600;3600;3600;3600;3600',"
+        " 'ALLOWED_HOURS_1: 9;10',"
+        " 'ALLOWED_HOURS_2: 9;10',"
+        " 'ALLOWED_HOURS_3: 9;10',"
+        " 'ALLOWED_HOURS_4: 9;10',"
+        " 'ALLOWED_HOURS_5: 9;10',"
+        " 'ALLOWED_HOURS_6: 9;10',"
+        " 'ALLOWED_HOURS_7: 9;10',"
+        " 'TIME_LEFT_DAY: 1200',"
+        " 'LOCKOUT_TYPE: none']"
+    )
+
+    async def _fake_run(*args: str) -> CommandOutput:
+        return CommandOutput(command="x", stdout=stdout, stderr="", code=0)
 
     monkeypatch.setattr(adapter, "_async_run_timekpra", _fake_run)
 

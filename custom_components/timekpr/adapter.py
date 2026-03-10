@@ -335,8 +335,33 @@ class TimekprCommandAdapter:
         code is 0; prefer stdout when present, otherwise use stderr.
         """
         if output.stdout.strip():
-            return output.stdout
-        return output.stderr
+            return TimekprCommandAdapter._normalize_structured_text(output.stdout)
+        return TimekprCommandAdapter._normalize_structured_text(output.stderr)
+
+    @staticmethod
+    def _normalize_structured_text(raw_text: str) -> str:
+        """Normalize output text that may be represented as a Python literal."""
+        stripped = raw_text.strip()
+        if not stripped:
+            return raw_text
+        if stripped[0] in {"[", "(", "'", '"', "b"}:
+            try:
+                parsed = ast.literal_eval(stripped)
+            except (SyntaxError, ValueError):
+                return raw_text
+            if isinstance(parsed, (bytes, bytearray)):
+                return parsed.decode(errors="ignore")
+            if isinstance(parsed, str):
+                return parsed
+            if isinstance(parsed, (list, tuple)):
+                normalized_lines: list[str] = []
+                for item in parsed:
+                    if isinstance(item, (bytes, bytearray)):
+                        normalized_lines.append(item.decode(errors="ignore"))
+                    else:
+                        normalized_lines.append(str(item))
+                return "\n".join(normalized_lines)
+        return raw_text
 
     @staticmethod
     def _extract_usernames(raw_text: str) -> list[str]:
