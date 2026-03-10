@@ -100,6 +100,62 @@ async def test_async_list_users_falls_back_to_stderr() -> None:
 
 
 @pytest.mark.asyncio
+async def test_async_list_users_parses_bullets_and_bytes_repr() -> None:
+    """User listing should support additional textual wrappers."""
+    hass = DummyHass(
+        services=DummyServices(
+            response={
+                "results": [
+                    {
+                        "success": True,
+                        "command": "cmd",
+                        "stdout": "- emmanuel\nb'hadrien'\n* josephine\n",
+                        "stderr": "",
+                        "code": 0,
+                    }
+                ]
+            }
+        )
+    )
+    adapter = TimekprCommandAdapter(
+        hass,
+        ssh_device_id="device-1",
+        timekpra_path="/usr/bin/timekpra",
+    )
+
+    users = await adapter.async_list_users()
+    assert users == ["emmanuel", "hadrien", "josephine"]
+
+
+@pytest.mark.asyncio
+async def test_async_list_users_unparsable_output_raises_parse_error() -> None:
+    """Non-empty non-user output should produce detailed parse error."""
+    hass = DummyHass(
+        services=DummyServices(
+            response={
+                "results": [
+                    {
+                        "success": True,
+                        "command": "cmd",
+                        "stdout": "Users total: 2\ninvalid user",
+                        "stderr": "",
+                        "code": 0,
+                    }
+                ]
+            }
+        )
+    )
+    adapter = TimekprCommandAdapter(
+        hass,
+        ssh_device_id="device-1",
+        timekpra_path="/usr/bin/timekpra",
+    )
+
+    with pytest.raises(TimekprParseError):
+        await adapter.async_list_users()
+
+
+@pytest.mark.asyncio
 async def test_sudo_error_is_mapped() -> None:
     """Sudo-related failures should raise dedicated error type."""
     hass = DummyHass(

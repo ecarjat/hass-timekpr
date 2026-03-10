@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import ast
 import logging
 import re
 import shlex
@@ -25,6 +26,7 @@ from .const import (
 from .models import TimekprUserState
 
 _USER_RE = re.compile(r"^[a-z_][a-z0-9_.-]*\$?$", re.IGNORECASE)
+_ANSI_ESCAPE_RE = re.compile(r"\x1B\[[0-?]*[ -/]*[@-~]")
 _WINDOWS_RE = re.compile(
     r"^((?:[01]\d|2[0-3]):[0-5]\d)-(?:([01]\d|2[0-3]|24):([0-5]\d))$"
 )
@@ -83,20 +85,21 @@ class TimekprCommandAdapter:
         output = await self._async_run_timekpra(TIMEKPR_CMD_USERLIST)
         raw_text = self._pick_structured_output(output)
 
-        users: list[str] = []
-        for line in raw_text.splitlines():
-            candidate = line.strip()
-            if not candidate:
-                continue
-            if _USER_RE.fullmatch(candidate):
-                users.append(candidate)
+        users = self._extract_usernames(raw_text)
 
         if not users:
+            lower = raw_text.lower()
+            if re.search(r"\b0\s+users?\b", lower) or "no users" in lower:
+                return []
             _LOGGER.warning(
                 "timekpra --userlist returned no parsable users for device=%s (stdout=%r, stderr=%r)",
                 self._ssh_device_id,
                 output.stdout[:400],
                 output.stderr[:400],
+            )
+            preview = raw_text.strip().replace("\n", "\\n")
+            raise TimekprParseError(
+                f"No usernames parsed from --userlist output: {preview[:300]}"
             )
         return sorted(set(users))
 
@@ -324,6 +327,44 @@ class TimekprCommandAdapter:
         if output.stdout.strip():
             return output.stdout
         return output.stderr
+
+    @staticmethod
+    def _extract_usernames(raw_text: str) -> list[str]:
+        """Extract usernames from raw `--userlist` output."""
+        users: set[str] = set()
+        cleaned_text = _ANSI_ESCAPE_RE.sub("", raw_text.replace("\r", "\n"))
+        for line in cleaned_text.splitlines():
+            candidate = line.strip()
+            if not candidate:
+                continue
+
+            if (
+                len(candidate) >= 3
+                and candidate[0:2] in {"b'", 'b"'}
+                and candidate[-1] == candidate[1]
+            ):
+                try:
+                    parsed = ast.literal_eval(candidate)
+                except (SyntaxError, ValueError):
+                    parsed = None
+                if isinstance(parsed, (bytes, bytearray)):
+                    candidate = parsed.decode(errors="ignore").strip()
+                elif isinstance(parsed, str):
+                    candidate = parsed.strip()
+
+            if candidate.startswith(("- ", "* ")):
+                candidate = candidate[2:].strip()
+
+            if _USER_RE.fullmatch(candidate):
+                users.add(candidate)
+                continue
+
+            if "," in candidate:
+                comma_parts = [part.strip() for part in candidate.split(",") if part.strip()]
+                if comma_parts and all(_USER_RE.fullmatch(part) for part in comma_parts):
+                    users.update(comma_parts)
+
+        return sorted(users)
 
     @staticmethod
     def _parse_int_list(raw: str, expected: int | None = None) -> list[int]:
