@@ -90,6 +90,7 @@ For each managed user:
 - Lockout is implemented by exhausting remaining time for the day.
 - Unlock restores previously cached remaining time for that user (or configured grace minutes if no cache exists).
 - If multiple hosts manage the same username, include `entry_id` in service calls.
+- Remaining Time sensor is refreshed every 5 minutes (and immediately after writes).
 
 ## Troubleshooting
 
